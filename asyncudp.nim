@@ -7,18 +7,29 @@ proc sendTo(socket: AsyncFD; address: string; port: Port; data: string): Future[
   await sendTo(socket, unsafeAddr data[0], len(data), cast[ptr SockAddr](addr saddr), slen)
 
 proc sendTo*(socket: AsyncSocket; address: string; port: Port; data: string): Future[void] {.async.} =
+  runnableExamples:
+    import asyncdispatch, net, nativesockets, asyncnet
+    var sock = newAsyncSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    waitFor sock.sendTo("127.0.0.1", 1900.Port, "TEST2")    
+    sock.close()
   assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   await sendTo(socket.getFd.AsyncFD, address, port, data)
 
-proc recvFrom(socket: AsyncSocket; length: int; flags = 0'i32): Future[tuple[address: string, port: Port, data: string]] {.async.} = 
+proc recvFrom*(socket: AsyncSocket; length: int; flags: set[SocketFlag] = {}): Future[tuple[address: string, port: Port, data: string]] {.async.} = 
+  runnableExamples:
+    import asyncdispatch, net, nativesockets, asyncnet
+    var socket = newAsyncSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    socket.bindAddr(1900.Port)
+    const MSG_LEN = 16384 
+    asyncCheck socket.recvFrom(MSG_LEN)
   # assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket") # TODO when inside asyncnet; socket.protocol is private
   result.data.setLen(length)
   var saddr: Sockaddr_storage
   var slen = sizeof(saddr).SockLen
   var size = await recvFromInto(socket.getFd.AsyncFD, cast[cstring](addr result.data[0]),
                                 length, cast[ptr SockAddr](addr(saddr)), # 16384
-                                addr(slen))
+                                addr(slen), flags)
   # result.address = getAddrString(cast[ptr SockAddr](addr(saddr))) # works 
   # result.port = ntohs(saddr.sin_port).Port # is private to asyncnet, maybe later :)
   var ipaddr: IpAddress
@@ -42,7 +53,7 @@ when isMainModule and false:
   socket.bindAddr(Port(8765))
   const MSG_LEN = 16384 
   while true:
-    echo "R: ", waitFor socket.recvFrom(MSG_LEN, address, port ), " ", address,":", port, " "
+    echo "R: ", waitFor socket.recvFrom(MSG_LEN, address, port)
 
 when isMainModule and true:
   import multicast
