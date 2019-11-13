@@ -12,7 +12,7 @@ proc sendTo*(socket: AsyncSocket; address: string; port: Port; data: string): Fu
     var sock = newAsyncSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
     waitFor sock.sendTo("127.0.0.1", 1900.Port, "TEST2")    
     sock.close()
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
+  #assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   await sendTo(socket.getFd.AsyncFD, address, port, data)
 
